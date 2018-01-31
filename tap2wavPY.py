@@ -4,12 +4,14 @@ taplengthinseconds = 8.0 / 985248.0
 samplerate = 44100.0
 duration = 1.0
 frequency = 440.0
+checksum = 0
 
 shortpulse = 0x30
 mediumpulse = 0x42
 longpulse = 0x56
 
 wavef = 0
+invert = 0
 
 def openwavefile(name):
  global wavef;
@@ -25,9 +27,12 @@ def closewavefile():
 
 def addcycle( lengthinseconds ):
  global wavef
+ global invert
  numberofsteps = int(samplerate * lengthinseconds)
  for i in range(numberofsteps):
   value = int(32767.0 * math.sin(float(i) / float(numberofsteps) * 2.0 * math.pi))
+  if invert:
+   value = -value
   data = struct.pack('<h', value)
   wavef.writeframesraw(data)
 
@@ -50,14 +55,27 @@ def adddatamarker(moretofollow):
   addtapcycle(longpulse)
   addtapcycle(shortpulse)
 
+def resetchecksum():
+ global checksum
+ checksum = 0
+
+def computechecksum():
+ global checksum
+ return checksum
+
 def addbyteframe(value, moretofollow):
+ global checksum
  checkbit = 1
  for i in range(8):
-  bit = value & (1 << i)
+  if (value & (1 << i)) != 0:
+   bit = 1
+  else:
+   bit = 0
   addbit(bit) 
   checkbit ^= bit
  addbit(checkbit)
  adddatamarker(moretofollow)
+ checksum ^= value
  
 def addleader(type):
  if (type == 0):
@@ -74,26 +92,58 @@ def addsyncchain(repeated):
   value = 0x09
  else:
   value = 0x89
- while (value > 0):
+ count = 9
+ while (count > 0):
   addbyteframe(value, True)
   value-=1
+  count-=1
 
-def addheader(repeated):
+def adddata(buffer, length):
+ for i in range(length):
+  addbyteframe(buffer[i], True)
+
+def addheader(repeated, type, startaddress, endaddress, filenamebytes):
   if (repeated):
    addleader(2)
   else:
    addleader(0)
   adddatamarker(True)
   addsyncchain(repeated)
-  pass
+  resetchecksum()
+  if type != 2:
+   addbyteframe(type, True)
+   addbyteframe(startaddress & 0x00ff, True)
+   addbyteframe((startaddress & 0xff00) >> 8, True)
+   addbyteframe(endaddress & 0x00ff, True)
+   addbyteframe((endaddress & 0xff00) >> 8, True)
+   adddata(filenamebytes, 16)
+  for i in range(171):
+   addbyteframe(0x20, True)
+  addbyteframe(computechecksum(), False)
 
-def addfile():
+def addfile(filebytes, length):
+ repeated = False
+ for i in range(2):
+  if (not repeated):
+   addleader(1)
+  else:
+   addleader(2)
+  adddatamarker(True)
+  addsyncchain(repeated)
+  resetchecksum()
+  adddata(filebytes, length)
+  addbyteframe(computechecksum(), False)
+  repeated = True
  addleader(1)
 
 openwavefile('test.wav')
 
-addheader(False)
-addfile()
+filename = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+filedata = [65, 66, 67, 68]
+
+addheader(False, 3, 1024, 1100, filename)
+addheader(True, 3, 1024, 1100, filename)
+addfile(filedata, 4)
 
 closewavefile()
 
