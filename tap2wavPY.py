@@ -1,4 +1,4 @@
-import wave, struct, math
+import wave, struct, math, sys
 
 class outputsoundfile:
  def __init__(self, name):
@@ -188,12 +188,18 @@ class inputprgfile:
    f.close()
   self.type = 3
   
-   
-prgfile = inputprgfile('game.prg')
-wavefile = outputsoundfile('test.wav')
 
-c64file = commodorefile('test')
-c64file.setcontent(prgfile)
-c64file.generatesound(wavefile)
+if len(sys.argv) != 3:
+ print 'Usage:', sys.argv[0], ' <input prg filename> <c64 filename>'
+else:
+ infilename = sys.argv[1]
+ outfilename = infilename + '.wav'
+ c64name = sys.argv[2]
+ prgfile = inputprgfile(infilename)
+ wavefile = outputsoundfile(outfilename)
 
-wavefile.close()
+ c64file = commodorefile(c64name)
+ c64file.setcontent(prgfile)
+ c64file.generatesound(wavefile)
+
+ wavefile.close()
