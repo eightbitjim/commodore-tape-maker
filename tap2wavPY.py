@@ -169,12 +169,27 @@ class commodorefile:
  
 class inputprgfile:
  def __init__(self, filename):
-  self.data = [1,2,3,4,5,6,7]
+  self.filename = filename
+  self.read()
+  print 'Filename ', filename
+  print 'Length ', len(self.data)
+  print 'Start address ', self.startaddress
+   
+ def read(self):
+  self.data = []
+  f = open(self.filename, 'rb')
+  try:
+   self.startaddress = ord(f.read(1)[0]) + 0x100 * ord(f.read(1)[0])
+   byte = f.read(1)
+   while byte != '':
+    self.data.append(ord(byte[0]))
+    byte = f.read(1)
+  finally:
+   f.close()
   self.type = 3
-  self.startaddress = 1024
-
+  
+   
 prgfile = inputprgfile('game.prg')
-
 wavefile = outputsoundfile('test.wav')
 
 c64file = commodorefile('test')
