@@ -171,9 +171,11 @@ class inputprgfile:
  def __init__(self, filename):
   self.filename = filename
   self.read()
-  print 'Filename ', filename
-  print 'Length ', len(self.data)
-  print 'Start address ', self.startaddress
+  self.typestring = ['none', 'relocatable (BASIC) program', 'sequential (SEQ) file', 'non-relacatable (machine code / data)']
+  print 'Filename: ', filename
+  print 'Length: ', len(self.data)
+  print 'Start address: ', self.startaddress
+  print 'Type: ', self.typestring[self.type]
    
  def read(self):
   self.data = []
@@ -186,7 +188,10 @@ class inputprgfile:
     byte = f.read(1)
   finally:
    f.close()
-  self.type = 3
+
+  self.type = 3   
+  if self.startaddress == 4097 or self.startaddress == 2049:
+   self.type = 1
   
 
 if len(sys.argv) != 3:
