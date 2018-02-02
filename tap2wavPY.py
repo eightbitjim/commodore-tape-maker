@@ -19,6 +19,13 @@ class outputsoundfile:
   self.wavef.writeframes('')
   self.wavef.close()
 
+ def addsilence(self, lengthinseconds):
+  numberofsteps = int(self.samplerate * lengthinseconds)
+  for i in range(numberofsteps):
+   value = 0
+   data = struct.pack('<h', value)
+   self.wavef.writeframesraw(data)
+   
  def addcycle(self, lengthinseconds ):
   numberofsteps = int(self.samplerate * lengthinseconds)
   
@@ -57,6 +64,7 @@ class commodorefile:
   self.wavefile = outputwavefile
   self.addheader(False)
   self.addheader(True)
+  outputwavefile.addsilence(0.1)
   self.addfile()
 
  def addtapcycle(self, tapvalue ):
@@ -193,18 +201,31 @@ class inputprgfile:
   if self.startaddress == 4097 or self.startaddress == 2049:
    self.type = 1
   
+error = False
 
-if len(sys.argv) != 3:
- print 'Usage:', sys.argv[0], ' <input prg filename> <c64 filename>'
+if len(sys.argv) < 2:
+ error = True
 else:
- infilename = sys.argv[1]
- outfilename = infilename + '.wav'
- c64name = sys.argv[2]
- prgfile = inputprgfile(infilename)
- wavefile = outputsoundfile(outfilename)
+ numberofpairs = len(sys.argv) - 1
+ if ((numberofpairs % 2) != 0):
+  print "Error. Must specify pairs of filenames."
+  error = True
+ 
+ numberofpairs /= 2
+ 
+ if (not error):
+  outfilename = 'out.wav'
+  wavefile = outputsoundfile(outfilename)
+  for i in range(numberofpairs):
+   infilename = sys.argv[1 + i * 2]
+   c64name = sys.argv[2 + i * 2]
+   prgfile = inputprgfile(infilename)
+   c64file = commodorefile(c64name)
+   c64file.setcontent(prgfile)
+   c64file.generatesound(wavefile)
+   wavefile.addsilence(2.0)
+  wavefile.close()
 
- c64file = commodorefile(c64name)
- c64file.setcontent(prgfile)
- c64file.generatesound(wavefile)
-
- wavefile.close()
+if error:
+ print 'Usage: python ', sys.argv[0], ' <input prg filename> <c64 filename> [...]'
+ print '       where [...] is zero or more additional pairs of filenames'
