@@ -6,6 +6,9 @@ class outputsoundfile:
   self.samplerate = 44100.0
   self.wavef = 0
   self.invert = 0
+  self.SQUARE_WAVE = 0
+  self.SINE_WAVE = 1
+  self.wavetype = self.SQUARE_WAVE
   self.open()
 
  def open(self):
@@ -30,7 +33,13 @@ class outputsoundfile:
   numberofsteps = int(self.samplerate * lengthinseconds)
   
   for i in range(numberofsteps):
-   value = int(32767.0 * math.sin(float(i) / float(numberofsteps) * 2.0 * math.pi))
+   if self.wavetype == self.SINE_WAVE:
+    value = int(32767.0 * math.sin(float(i) / float(numberofsteps) * 2.0 * math.pi))
+   else:
+    if i < numberofsteps / 2:
+     value = 32767
+    else:
+     value = -32767
    if self.invert:
     value = -value
    data = struct.pack('<h', value)
