@@ -61,7 +61,16 @@ class commodorefile:
   self.wavefile = 0
 
  def makefilename(self, filename):
-  return [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+  buffer = []
+  filenamebuffersize = 0x10
+  space = 0x20
+  for i in range(filenamebuffersize):
+   if len(filename) <= i:
+    buffer.append(space)
+   else:
+    buffer.append(ord(filename[i].lower()))
+  
+  return buffer
 
  def setcontent(self, inputfile):
   self.data = inputfile.data
