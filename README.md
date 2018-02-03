@@ -22,3 +22,17 @@ You can optionally specify more than one input file / filename pair, in which ca
 * `-basic`: force all files to be non-relocatable (BASIC) program files
 * `-data`: force all files to be relocatable (non-BASIC) files (the default is to automatically detect the file type based on load address) 
 * `-output=<filename>`: specifies the name of the output WAV file. Default is `out.wav`
+
+## Example:
+Convert a single PRG file called `game.prg` to a wav file (filename defaults to `out.wav`), with a Commodore filename of `game`. Automatically detects whether it is a BASIC program or not:
+
+`python tap2wavPY.py game.prg game`
+
+Same as above but invert the output signal, which often fixes problems loading into a real Commodore:
+
+`python tap2wavPY.py -invert game.prg game`
+
+Convert two PRG files to a single WAV file called `files.wav`. Force output to be a sine wave:
+
+`python tap2wavPY.py -sine loader.prg loader game.prg game`
+
