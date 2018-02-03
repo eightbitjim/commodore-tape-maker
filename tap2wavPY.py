@@ -322,21 +322,21 @@ class commandline:
   if switches:
    print "No input files specified"
    self.error = True
-   
   return self.error
      
-   
-#TODO:
-# refactor command line parsing to cope with switches
-# add switch for inverting waveform
-# add switch for sine / square
-# add C16/Plus 4 support
-# add forced filetype
-
 cl = commandline(sys.argv)
 if cl.error:
    print 'Usage: python ', sys.argv[0], '[switches] <input prg filename> <c64 filename> [...]'
    print '       where [...] is zero or more additional pairs of filenames'
+   print 'switches:'
+   print ' -invert : invert the output waveform'
+   print "           (this often fixes the problem if you can't load the file on a real commodore)"
+   print ' -sine   : force sine wave output'
+   print ' -square : force square wave output (the default)'
+   print ' -basic  : force all files to be non-relocatable (BASIC) program files'
+   print ' -data   : force all files to be relocatable (non-BASIC) files'
+   print '           (the default is to automatically detect the file type based on load address)'
+   print ' -output=<filename> : specifies the name of the output WAV file. Default is out.wav'
 else:
   wavefile = outputsoundfile(cl.outfile, cl.options)
   for i in range(len(cl.inputfiles)):
