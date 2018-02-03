@@ -6,7 +6,7 @@ Input files are `PRG`, output are mono uncompressed `WAV`.
 # Command line:
 The following assumes that you have python installed and can run it from the command line.
 
-`python tap2wavPY.py [switches] <input PRG> <commodore filename> [<input PRG><commodore filename>] ...`
+`python maketape.py [switches] <input PRG> <commodore filename> [<input PRG><commodore filename>] ...`
 
 * `<input PRG>` is a `PRG` file to convert to audio. The first two bytes of the file must specify the load address in the
 Commodore-computer's memory. The remaining bytes of the file are assumed to be data. There is no checksum or any other structure to the file.
@@ -26,13 +26,13 @@ You can optionally specify more than one input file / filename pair, in which ca
 ## Example:
 Convert a single PRG file called `game.prg` to a wav file (filename defaults to `out.wav`), with a Commodore filename of `game`. Automatically detects whether it is a BASIC program or not:
 
-`python tap2wavPY.py game.prg game`
+`python maketape.py game.prg game`
 
 Same as above but invert the output signal, which often fixes problems loading into a real Commodore:
 
-`python tap2wavPY.py -invert game.prg game`
+`python maketape.py -invert game.prg game`
 
 Convert two PRG files to a single WAV file called `files.wav`. Force output to be a sine wave:
 
-`python tap2wavPY.py -sine loader.prg loader game.prg game`
+`python maketape.py -sine loader.prg loader game.prg game`
 
