@@ -96,12 +96,7 @@ class commodorefile:
   self.data = inputfile.data
   self.startaddress = inputfile.startaddress
   self.endaddress = inputfile.startaddress + len(inputfile.data)
-  if self.options.forcerelocatable:
-   self.filetype = 3
-  elif self.options.forcenonrelocatable:
-   self.filetype = 1
-  else:
-   self.filetype = inputfile.type
+  self.filetype = inputfile.type
 
  def generatesound(self, outputwavefile):
   self.wavefile = outputwavefile
@@ -240,10 +235,15 @@ class inputprgfile:
     byte = f.read(1)
   finally:
    f.close()
-
-  self.type = 3   
-  if self.startaddress == 4097 or self.startaddress == 2049:
+ 
+  if self.options.forcenonrelocatable:
+   self.type = 3
+  elif self.options.forcerelocatable:
    self.type = 1
+  else: 
+   self.type = 3 
+   if self.startaddress == 4097 or self.startaddress == 2049:
+    self.type = 1
 
 class options:
  def __init__(self):
