@@ -23,14 +23,11 @@
 import wave, struct, math, sys
 
 class outputsoundfile:
- def __init__(self, name):
+ def __init__(self, name, options):
   self.name = name
+  self.options = options
   self.samplerate = 44100.0
   self.wavef = 0
-  self.invert = 0
-  self.SQUARE_WAVE = 0
-  self.SINE_WAVE = 1
-  self.wavetype = self.SQUARE_WAVE
   self.open()
 
  def open(self):
@@ -55,25 +52,26 @@ class outputsoundfile:
   numberofsteps = int(self.samplerate * lengthinseconds)
   
   for i in range(numberofsteps):
-   if self.wavetype == self.SINE_WAVE:
+   if self.options.sinewave:
     value = int(32767.0 * math.sin(float(i) / float(numberofsteps) * 2.0 * math.pi))
    else:
     if i < numberofsteps / 2:
      value = 32767
     else:
      value = -32767
-   if self.invert:
+   if self.options.invertwaveform:
     value = -value
    data = struct.pack('<h', value)
    self.wavef.writeframesraw(data)
 
 
 class commodorefile:
- def __init__(self, filename):
+ def __init__(self, filename, options):
   self.taplengthinseconds = 8.0 / 985248.0
   self.shortpulse = 0x30
   self.mediumpulse = 0x42
   self.longpulse = 0x56
+  self.options = options
   self.checksum = 0
   self.data = []
   self.filenamedata = self.makefilename(filename)
@@ -98,7 +96,12 @@ class commodorefile:
   self.data = inputfile.data
   self.startaddress = inputfile.startaddress
   self.endaddress = inputfile.startaddress + len(inputfile.data)
-  self.filetype = inputfile.type
+  if self.options.forcerelocatable:
+   self.filetype = 3
+  elif self.options.forcenonrelocatable:
+   self.filetype = 1
+  else:
+   self.filetype = inputfile.type
 
  def generatesound(self, outputwavefile):
   self.wavefile = outputwavefile
@@ -216,8 +219,9 @@ class commodorefile:
  
  
 class inputprgfile:
- def __init__(self, filename):
+ def __init__(self, filename, options):
   self.filename = filename
+  self.options = options
   self.read()
   self.typestring = ['none', 'relocatable (BASIC) program', 'sequential (SEQ) file', 'non-relacatable (machine code / data)']
   print 'Filename: ', filename
@@ -240,32 +244,106 @@ class inputprgfile:
   self.type = 3   
   if self.startaddress == 4097 or self.startaddress == 2049:
    self.type = 1
-  
-error = False
 
-if len(sys.argv) < 2:
- error = True
+class options:
+ def __init__(self):
+  self.invertwaveform = False
+  self.sinewave = False
+  self.forcerelocatable = False
+  self.forcenonrelocatable = False
+ 
+class commandline:
+ def __init__(self, arguments):
+  self.arguments = arguments
+  self.options = options()
+  self.currentargument = 0
+  self.inputfiles = []
+  self.error = False
+  self.scriptname = self.nextargument()
+  self.outfile = 'out.wav'
+  self.parse()
+    
+ def addfile(self, filename, commodorefilename):
+  self.inputfiles.append((filename, commodorefilename))
+
+ def nextargument(self):
+  if self.currentargument >= len(self.arguments):
+   return None
+  else:
+   arg = self.arguments[self.currentargument]  
+   self.currentargument += 1
+   return arg
+
+ def parseswitch(self, switch):
+  switch = switch.lower()
+  if switch == '-invert':
+   print 'Inverting waveform'
+   self.options.invertwaveform = True
+  elif switch == '-sine':
+   print 'Sine wave output'
+   self.options.sinewave = True
+  elif switch == '-square':
+   print 'Square wave output'
+   self.options.sinewave = False
+  elif switch.startswith('-output='):
+   self.outfile = switch[8::]
+   print 'Output file ', self.outfile
+  elif switch == '-basic':
+   print 'Forcing relocatable (BASIC) file type'
+   self.options.forcerelocatable = True   
+  elif switch == '-data':
+   print 'Forcing non-relocatable (machine code / data) file type'
+   self.options.forcenonrelocatable = True   
+  else:
+   print 'Unknown switch ', switch
+   self.error = True  
+    
+ def parsefilename(self, name):
+  commodorename = self.nextargument()
+  if commodorename == None:
+   print 'Missing commodore filename for ',name
+   self.error = True
+  else:
+   self.inputfiles.append((name, commodorename))
+ 
+ def parse(self):
+  switches = True
+  while not self.error:
+   arg = self.nextargument()
+   if arg == None:
+    break
+   if arg[0] != '-':
+    switches = False
+   if switches:
+    self.parseswitch(arg)
+   else:
+    self.parsefilename(arg)
+
+  if switches:
+   print "No input files specified"
+   self.error = True
+   
+  return self.error
+     
+   
+#TODO:
+# refactor command line parsing to cope with switches
+# add switch for inverting waveform
+# add switch for sine / square
+# add C16/Plus 4 support
+# add forced filetype
+
+cl = commandline(sys.argv)
+if cl.error:
+   print 'Usage: python ', sys.argv[0], '[switches] <input prg filename> <c64 filename> [...]'
+   print '       where [...] is zero or more additional pairs of filenames'
 else:
- numberofpairs = len(sys.argv) - 1
- if ((numberofpairs % 2) != 0):
-  print "Error. Must specify pairs of filenames."
-  error = True
- 
- numberofpairs /= 2
- 
- if (not error):
-  outfilename = 'out.wav'
-  wavefile = outputsoundfile(outfilename)
-  for i in range(numberofpairs):
-   infilename = sys.argv[1 + i * 2]
-   c64name = sys.argv[2 + i * 2]
-   prgfile = inputprgfile(infilename)
-   c64file = commodorefile(c64name)
+  wavefile = outputsoundfile(cl.outfile, cl.options)
+  for i in range(len(cl.inputfiles)):
+   (infilename, c64name) = cl.inputfiles[i]
+   prgfile = inputprgfile(infilename, cl.options)
+   c64file = commodorefile(c64name, cl.options)
    c64file.setcontent(prgfile)
    c64file.generatesound(wavefile)
    wavefile.addsilence(2.0)
   wavefile.close()
-
-if error:
- print 'Usage: python ', sys.argv[0], ' <input prg filename> <c64 filename> [...]'
- print '       where [...] is zero or more additional pairs of filenames'
