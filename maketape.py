@@ -20,330 +20,354 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import wave, struct, math, sys
-
-class outputsoundfile:
- def __init__(self, name, options):
-  self.name = name
-  self.options = options
-  self.samplerate = 44100.0
-  self.wavef = 0
-  self.open()
-
- def open(self):
-  global wavef;
-  self.wavef = wave.open(self.name, 'w')
-  self.wavef.setnchannels(1)
-  self.wavef.setsampwidth(2)
-  self.wavef.setframerate(self.samplerate)
-
- def close(self):
-  self.wavef.writeframes('')
-  self.wavef.close()
-
- def addsilence(self, lengthinseconds):
-  numberofsteps = int(self.samplerate * lengthinseconds)
-  for i in range(numberofsteps):
-   value = 0
-   data = struct.pack('<h', value)
-   self.wavef.writeframesraw(data)
-   
- def addcycle(self, lengthinseconds ):
-  numberofsteps = int(self.samplerate * lengthinseconds)
-  
-  for i in range(numberofsteps):
-   if self.options.sinewave:
-    value = int(32767.0 * math.sin(float(i) / float(numberofsteps) * 2.0 * math.pi))
-   else:
-    if i < numberofsteps / 2:
-     value = 32767
-    else:
-     value = -32767
-   if self.options.invertwaveform:
-    value = -value
-   data = struct.pack('<h', value)
-   self.wavef.writeframesraw(data)
+import math
+import struct
+import sys
+import wave
 
 
-class commodorefile:
- def __init__(self, filename, options):
-  self.taplengthinseconds = 8.0 / 985248.0
-  self.shortpulse = 0x30
-  self.mediumpulse = 0x42
-  self.longpulse = 0x56
-  self.options = options
-  self.checksum = 0
-  self.data = []
-  self.filenamedata = self.makefilename(filename)
-  self.startaddress = 0
-  self.endaddress = 0
-  self.filetype = 3
-  self.wavefile = 0
+class OutputSoundFile:
+    def __init__(self, name, options):
+        self.name = name
+        self.options = options
+        self.sample_rate = 44100.0
+        self.wave_file = None
+        self.open()
 
- def makefilename(self, filename):
-  buffer = []
-  filenamebuffersize = 0x10
-  space = 0x20
-  for i in range(filenamebuffersize):
-   if len(filename) <= i:
-    buffer.append(space)
-   else:
-    buffer.append(ord(filename[i].lower()))
-  
-  return buffer
+    def open(self):
+        self.wave_file = wave.open(self.name, 'w')
+        self.wave_file.setnchannels(1)
+        self.wave_file.setsampwidth(2)
+        self.wave_file.setframerate(self.sample_rate)
 
- def setcontent(self, inputfile):
-  self.data = inputfile.data
-  self.startaddress = inputfile.startaddress
-  self.endaddress = inputfile.startaddress + len(inputfile.data)
-  self.filetype = inputfile.type
+    def close(self):
+        self.wave_file.writeframes('')
+        self.wave_file.close()
 
- def generatesound(self, outputwavefile):
-  self.wavefile = outputwavefile
-  self.addheader(False)
-  self.addheader(True)
-  outputwavefile.addsilence(0.1)
-  self.addfile()
+    def add_silence(self, length_in_seconds):
+        number_of_steps = int(self.sample_rate * length_in_seconds)
+        for i in range(number_of_steps):
+            value = 0
+            data = struct.pack('<h', value)
+            self.wave_file.writeframesraw(data)
 
- def addtapcycle(self, tapvalue ):
-  wavefile.addcycle(tapvalue * self.taplengthinseconds)
- 
- def addbit(self, value):
-  if (value == 0):
-   self.addtapcycle(self.shortpulse)
-   self.addtapcycle(self.mediumpulse)
-  else:
-   self.addtapcycle(self.mediumpulse)
-   self.addtapcycle(self.shortpulse)
+    def add_cycle(self, length_in_seconds):
+        number_of_steps = int(self.sample_rate * length_in_seconds)
 
- def adddatamarker(self, moretofollow):
-  if moretofollow:
-   self.addtapcycle(self.longpulse)
-   self.addtapcycle(self.mediumpulse)
-  else:
-   self.addtapcycle(self.longpulse)
-   self.addtapcycle(self.shortpulse)
+        for i in range(number_of_steps):
+            if self.options.sine_wave:
+                value = int(32767.0 * math.sin(float(i) / float(number_of_steps) * 2.0 * math.pi))
+            else:
+                if i < number_of_steps / 2:
+                    value = 32767
+                else:
+                    value = -32767
+            if self.options.invert_waveform:
+                value = -value
+            data = struct.pack('<h', value)
+            self.wave_file.writeframesraw(data)
 
- def resetchecksum(self):
-  self.checksum = 0
- 
- def addbyteframe(self, value, moretofollow):
-  checkbit = 1
-  for i in range(8):
-   if (value & (1 << i)) != 0:
-    bit = 1
-   else:
-    bit = 0
-   self.addbit(bit) 
-   checkbit ^= bit
-   
-  self.addbit(checkbit)
-  self.adddatamarker(moretofollow)
-  self.checksum ^= value
- 
- def addleader(self, type):
-  if (type == 0):
-   numberofpulses = 0x6a00
-  elif (type == 1):
-   numberofpulses = 0x1a00
-  else:
-   numberofpulses = 0x4f
-   
-  for i in range(numberofpulses):
-   self.addtapcycle( self.shortpulse )
 
- def addsyncchain(self, repeated):
-  if repeated:
-   value = 0x09
-  else:
-   value = 0x89
+class CommodoreFile:
+    TAP_LENGTH_IN_SECONDS = 8.0 / 985248.0
+    FILENAME_BUFFER_SIZE = 0x10
+    FILE_TYPE_NONE = 0
+    FILE_TYPE_RELOCATABLE = 1
+    FILE_TYPE_SEQUENTIAL = 2
+    FILE_TYPE_NON_RELOCATABLE = 3
+    LEADER_TYPE_HEADER = 0
+    LEADER_TYPE_CONTENT = 1
+    LEADER_TYPE_REPEATED = 2
+    NUMBER_OF_PADDING_BYTES = 171
+    PADDING_CHARACTER = 0x20
+    SHORT_PULSE = 0x30
+    MEDIUM_PULSE = 0x42
+    LONG_PULSE = 0x56
 
-  count = 9
-  while (count > 0):
-   self.addbyteframe(value, True)
-   value-=1
-   count-=1 
- 
- def adddata(self):
-  for i in range(len(self.data)):
-   self.addbyteframe(self.data[i], True)
+    def __init__(self, filename, options):
+        self.options = options
+        self.checksum = 0
+        self.data = []
+        self.filename_data = self.make_filename(filename)
+        self.start_address = 0
+        self.end_address = 0
+        self.file_type = self.FILE_TYPE_NONE
+        self.wave_file = None
 
- def addfilename(self):
-  for i in range(len(self.filenamedata)):
-   self.addbyteframe(self.filenamedata[i], True)
-  
- def addheader(self, repeated):
-   if (repeated):
-    self.addleader(2)
-   else:
-    self.addleader(0)
-    
-   self.adddatamarker(True)
-   self.addsyncchain(repeated)
-   self.resetchecksum()
-   
-   self.addbyteframe(self.filetype, True)
-   self.addbyteframe(self.startaddress & 0x00ff, True)
-   self.addbyteframe((self.startaddress & 0xff00) >> 8, True)
-   self.addbyteframe(self.endaddress & 0x00ff, True)
-   self.addbyteframe((self.endaddress & 0xff00) >> 8, True)
-   self.addfilename()
-   
-   for i in range(171):
-    self.addbyteframe(0x20, True)
-    
-   self.addbyteframe(self.checksum, False)
+    def make_filename(self, filename):
+        filename_buffer = []
+        space = 0x20
+        for i in range(self.FILENAME_BUFFER_SIZE):
+            if len(filename) <= i:
+                filename_buffer.append(space)
+            else:
+                filename_buffer.append(ord(filename[i].lower()))
 
- def addfile(self):
-  repeated = False
-  for i in range(2):
-   if (not repeated):
-    self.addleader(1)
-   else:
-    self.addleader(2)
-    
-   self.adddatamarker(True)
-   self.addsyncchain(repeated)
-   self.resetchecksum()
-   self.adddata()
-   
-   self.addbyteframe(self.checksum, False)
-   repeated = True
-   
-  self.addleader(1) 
- 
- 
-class inputprgfile:
- def __init__(self, filename, options):
-  self.filename = filename
-  self.options = options
-  self.read()
-  self.typestring = ['none', 'relocatable (BASIC) program', 'sequential (SEQ) file', 'non-relacatable (machine code / data)']
-  print 'Filename: ', filename
-  print 'Length: ', len(self.data)
-  print 'Start address: ', self.startaddress
-  print 'Type: ', self.typestring[self.type]
-   
- def read(self):
-  self.data = []
-  f = open(self.filename, 'rb')
-  try:
-   self.startaddress = ord(f.read(1)[0]) + 0x100 * ord(f.read(1)[0])
-   byte = f.read(1)
-   while byte != '':
-    self.data.append(ord(byte[0]))
-    byte = f.read(1)
-  finally:
-   f.close()
- 
-  if self.options.forcenonrelocatable:
-   self.type = 3
-  elif self.options.forcerelocatable:
-   self.type = 1
-  else: 
-   self.type = 3 
-   if self.startaddress == 4097 or self.startaddress == 2049:
-    self.type = 1
+        return filename_buffer
 
-class options:
- def __init__(self):
-  self.invertwaveform = False
-  self.sinewave = False
-  self.forcerelocatable = False
-  self.forcenonrelocatable = False
- 
-class commandline:
- def __init__(self, arguments):
-  self.arguments = arguments
-  self.options = options()
-  self.currentargument = 0
-  self.inputfiles = []
-  self.error = False
-  self.scriptname = self.nextargument()
-  self.outfile = 'out.wav'
-  self.parse()
-    
- def addfile(self, filename, commodorefilename):
-  self.inputfiles.append((filename, commodorefilename))
+    def set_content(self, input_file):
+        self.data = input_file.data
+        self.start_address = input_file.start_address
+        self.end_address = input_file.start_address + len(input_file.data)
+        self.file_type = input_file.type
 
- def nextargument(self):
-  if self.currentargument >= len(self.arguments):
-   return None
-  else:
-   arg = self.arguments[self.currentargument]  
-   self.currentargument += 1
-   return arg
+    def generate_sound(self, output_wave_file):
+        self.wave_file = output_wave_file
+        self.add_header(False)
+        self.add_header(True)
+        output_wave_file.add_silence(0.1)
+        self.add_file()
 
- def parseswitch(self, switch):
-  switch = switch.lower()
-  if switch == '-invert':
-   print 'Inverting waveform'
-   self.options.invertwaveform = True
-  elif switch == '-sine':
-   print 'Sine wave output'
-   self.options.sinewave = True
-  elif switch == '-square':
-   print 'Square wave output'
-   self.options.sinewave = False
-  elif switch.startswith('-output='):
-   self.outfile = switch[8::]
-   print 'Output file ', self.outfile
-  elif switch == '-basic':
-   print 'Forcing relocatable (BASIC) file type'
-   self.options.forcerelocatable = True   
-  elif switch == '-data':
-   print 'Forcing non-relocatable (machine code / data) file type'
-   self.options.forcenonrelocatable = True   
-  else:
-   print 'Unknown switch ', switch
-   self.error = True  
-    
- def parsefilename(self, name):
-  commodorename = self.nextargument()
-  if commodorename == None:
-   print 'Missing commodore filename for ',name
-   self.error = True
-  else:
-   self.inputfiles.append((name, commodorename))
- 
- def parse(self):
-  switches = True
-  while not self.error:
-   arg = self.nextargument()
-   if arg == None:
-    break
-   if arg[0] != '-':
-    switches = False
-   if switches:
-    self.parseswitch(arg)
-   else:
-    self.parsefilename(arg)
+    def add_tap_cycle(self, tap_value):
+        self.wave_file.add_cycle(tap_value * self.TAP_LENGTH_IN_SECONDS)
 
-  if switches:
-   print "No input files specified"
-   self.error = True
-  return self.error
-     
-cl = commandline(sys.argv)
+    def add_bit(self, value):
+        if value == 0:
+            self.add_tap_cycle(self.SHORT_PULSE)
+            self.add_tap_cycle(self.MEDIUM_PULSE)
+        else:
+            self.add_tap_cycle(self.MEDIUM_PULSE)
+            self.add_tap_cycle(self.SHORT_PULSE)
+
+    def add_data_marker(self, more_to_follow):
+        if more_to_follow:
+            self.add_tap_cycle(self.LONG_PULSE)
+            self.add_tap_cycle(self.MEDIUM_PULSE)
+        else:
+            self.add_tap_cycle(self.LONG_PULSE)
+            self.add_tap_cycle(self.SHORT_PULSE)
+
+    def reset_checksum(self):
+        self.checksum = 0
+
+    def add_byte_frame(self, value, more_to_follow):
+        check_bit = 1
+        for i in range(8):
+            if (value & (1 << i)) != 0:
+                bit = 1
+            else:
+                bit = 0
+            self.add_bit(bit)
+            check_bit ^= bit
+
+        self.add_bit(check_bit)
+        self.add_data_marker(more_to_follow)
+        self.checksum ^= value
+
+    def add_leader(self, type):
+        if type == self.LEADER_TYPE_HEADER:
+            number_of_pulses = 0x6a00
+        elif type == self.LEADER_TYPE_CONTENT:
+            number_of_pulses = 0x1a00
+        else:
+            number_of_pulses = 0x4f
+
+        for i in range(number_of_pulses):
+            self.add_tap_cycle(self.SHORT_PULSE)
+
+    def add_sync_chain(self, repeated):
+        if repeated:
+            value = 0x09
+        else:
+            value = 0x89
+
+        count = 9
+        while count > 0:
+            self.add_byte_frame(value, True)
+            value -= 1
+            count -= 1
+
+    def add_data(self):
+        for i in range(len(self.data)):
+            self.add_byte_frame(self.data[i], True)
+
+    def add_filename(self):
+        for i in range(len(self.filename_data)):
+            self.add_byte_frame(self.filename_data[i], True)
+
+    def add_header(self, repeated):
+        if repeated:
+            self.add_leader(self.LEADER_TYPE_REPEATED)
+        else:
+            self.add_leader(self.LEADER_TYPE_HEADER)
+
+        self.add_data_marker(True)
+        self.add_sync_chain(repeated)
+        self.reset_checksum()
+
+        self.add_byte_frame(self.file_type, True)
+        self.add_byte_frame(self.start_address & 0x00ff, True)
+        self.add_byte_frame((self.start_address & 0xff00) >> 8, True)
+        self.add_byte_frame(self.end_address & 0x00ff, True)
+        self.add_byte_frame((self.end_address & 0xff00) >> 8, True)
+        self.add_filename()
+
+        for i in range(self.NUMBER_OF_PADDING_BYTES):
+            self.add_byte_frame(self.PADDING_CHARACTER, True)
+
+        self.add_byte_frame(self.checksum, False)
+
+    def add_file(self):
+        repeated = False
+        for i in range(2):
+            if not repeated:
+                self.add_leader(self.LEADER_TYPE_CONTENT)
+            else:
+                self.add_leader(self.LEADER_TYPE_REPEATED)
+
+            self.add_data_marker(True)
+            self.add_sync_chain(repeated)
+            self.reset_checksum()
+            self.add_data()
+
+            self.add_byte_frame(self.checksum, False)
+            repeated = True
+
+        self.add_leader(1)
+
+
+class InputPRGFile:
+    TYPE_NONE = 0
+    TYPE_RELOCATABLE = 1
+    TYPE_SEQUENTIAL = 2
+    TYPE_NON_RELOCATABLE = 3
+    TYPE_STRING = ['none', 'relocatable (BASIC) program', 'sequential (SEQ) file',
+                   'non-relacatable (machine code / data)']
+
+    def __init__(self, filename, options):
+        self.filename = filename
+        self.options = options
+        self.start_address = 0
+        self.type = 0
+        self.data = []
+        self.read()
+        print 'Filename: ', filename
+        print 'Length: ', len(self.data)
+        print 'Start address: ', self.start_address
+        print 'Type: ', self.TYPE_STRING[self.type]
+
+    def read(self):
+        f = open(self.filename, 'rb')
+        try:
+            self.start_address = ord(f.read(1)[0]) + 0x100 * ord(f.read(1)[0])
+            byte = f.read(1)
+            while byte != '':
+                self.data.append(ord(byte[0]))
+                byte = f.read(1)
+        finally:
+            f.close()
+
+        if self.options.force_non_relocatable:
+            self.type = 3
+        elif self.options.force_relocatable:
+            self.type = 1
+        else:
+            self.type = 3
+            if self.start_address == 4097 or self.start_address == 2049:
+                self.type = 1
+
+
+class Options:
+    def __init__(self):
+        self.invert_waveform = False
+        self.sine_wave = False
+        self.force_relocatable = False
+        self.force_non_relocatable = False
+
+
+class CommandLine:
+    def __init__(self, arguments):
+        self.arguments = arguments
+        self.options = Options()
+        self.current_argument = 0
+        self.input_files = []
+        self.error = False
+        self.script_name = self.next_argument()
+        self.out_file = 'out.wav'
+        self.parse()
+
+    def add_file(self, input_filename, commodore_filename):
+        self.input_files.append((input_filename, commodore_filename))
+
+    def next_argument(self):
+        if self.current_argument >= len(self.arguments):
+            return None
+        else:
+            arg = self.arguments[self.current_argument]
+            self.current_argument += 1
+            return arg
+
+    def parse_switch(self, switch):
+        switch = switch.lower()
+        if switch == '-invert':
+            print 'Inverting waveform'
+            self.options.invert_waveform = True
+        elif switch == '-sine':
+            print 'Sine wave output'
+            self.options.sine_wave = True
+        elif switch == '-square':
+            print 'Square wave output'
+            self.options.sine_wave = False
+        elif switch.startswith('-output='):
+            self.out_file = switch[8::]
+            print 'Output file ', self.out_file
+        elif switch == '-basic':
+            print 'Forcing relocatable (BASIC) file type'
+            self.options.force_relocatable = True
+        elif switch == '-data':
+            print 'Forcing non-relocatable (machine code / data) file type'
+            self.options.force_non_relocatable = True
+        else:
+            print 'Unknown switch ', switch
+            self.error = True
+
+    def parse_filename(self, name):
+        commodore_filename = self.next_argument()
+        if commodore_filename is None:
+            print 'Missing commodore filename for ', name
+            self.error = True
+        else:
+            self.input_files.append((name, commodore_filename))
+
+    def parse(self):
+        switches = True
+        while not self.error:
+            arg = self.next_argument()
+            if arg is None:
+                break
+            if arg[0] != '-':
+                switches = False
+            if switches:
+                self.parse_switch(arg)
+            else:
+                self.parse_filename(arg)
+
+        if switches:
+            print "No input files specified"
+            self.error = True
+        return self.error
+
+
+cl = CommandLine(sys.argv)
 if cl.error:
-   print 'Usage: python ', sys.argv[0], '[switches] <input prg filename> <c64 filename> [...]'
-   print '       where [...] is zero or more additional pairs of filenames'
-   print 'switches:'
-   print ' -invert : invert the output waveform'
-   print "           (this often fixes the problem if you can't load the file on a real commodore)"
-   print ' -sine   : force sine wave output'
-   print ' -square : force square wave output (the default)'
-   print ' -basic  : force all files to be non-relocatable (BASIC) program files'
-   print ' -data   : force all files to be relocatable (non-BASIC) files'
-   print '           (the default is to automatically detect the file type based on load address)'
-   print ' -output=<filename> : specifies the name of the output WAV file. Default is out.wav'
+    print 'Usage: python ', sys.argv[0], '[switches] <input prg filename> <c64 filename> [...]'
+    print '       where [...] is zero or more additional pairs of filenames'
+    print 'switches:'
+    print ' -invert : invert the output waveform'
+    print "           (this often fixes the problem if you can't load the file on a real commodore)"
+    print ' -sine   : force sine wave output'
+    print ' -square : force square wave output (the default)'
+    print ' -basic  : force all files to be non-relocatable (BASIC) program files'
+    print ' -data   : force all files to be relocatable (non-BASIC) files'
+    print '           (the default is to automatically detect the file type based on load address)'
+    print ' -output=<filename> : specifies the name of the output WAV file. Default is out.wav'
 else:
-  wavefile = outputsoundfile(cl.outfile, cl.options)
-  for i in range(len(cl.inputfiles)):
-   (infilename, c64name) = cl.inputfiles[i]
-   prgfile = inputprgfile(infilename, cl.options)
-   c64file = commodorefile(c64name, cl.options)
-   c64file.setcontent(prgfile)
-   c64file.generatesound(wavefile)
-   wavefile.addsilence(2.0)
-  wavefile.close()
+    wave_file = OutputSoundFile(cl.out_file, cl.options)
+    for i in range(len(cl.input_files)):
+        (in_filename, c64name) = cl.input_files[i]
+        prg_file = InputPRGFile(in_filename, cl.options)
+        c64_file = CommodoreFile(c64name, cl.options)
+        c64_file.set_content(prg_file)
+        c64_file.generate_sound(wave_file)
+        wave_file.add_silence(2.0)
+    wave_file.close()
