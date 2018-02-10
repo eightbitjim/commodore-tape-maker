@@ -358,8 +358,8 @@ if cl.error:
     print "           (this often fixes the problem if you can't load the file on a real commodore)"
     print ' -sine   : force sine wave output (the default)'
     print ' -square : force square wave output'
-    print ' -basic  : force all files to be non-relocatable (BASIC) program files'
-    print ' -data   : force all files to be relocatable (non-BASIC) files'
+    print ' -basic  : force all files to be relocatable (BASIC) program files'
+    print ' -data   : force all files to be non-relocatable (non-BASIC) files'
     print '           (the default is to automatically detect the file type based on load address)'
     print ' -output=<filename> : specifies the name of the output WAV file. Default is out.wav'
 else:
