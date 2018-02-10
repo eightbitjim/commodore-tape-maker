@@ -56,12 +56,12 @@ class OutputSoundFile:
 
         for i in range(number_of_steps):
             if self.options.sine_wave:
-                value = int(32767.0 * math.sin(float(i) / float(number_of_steps) * 2.0 * math.pi))
+                value = 0 - int(32767.0 * math.sin(float(i) / float(number_of_steps) * 2.0 * math.pi))
             else:
                 if i < number_of_steps / 2:
-                    value = 32767
-                else:
                     value = -32767
+                else:
+                    value = 32767
             if self.options.invert_waveform:
                 value = -value
             data = struct.pack('<h', value)
@@ -101,7 +101,7 @@ class CommodoreFile:
             if len(filename) <= i:
                 filename_buffer.append(space)
             else:
-                filename_buffer.append(ord(filename[i].lower()))
+                filename_buffer.append(ord(filename[i]))
 
         return filename_buffer
 
@@ -244,6 +244,7 @@ class InputPRGFile:
         print 'Filename: ', filename
         print 'Length: ', len(self.data)
         print 'Start address: ', self.start_address
+        print 'End address: ', self.start_address + len(self.data)
         print 'Type: ', self.TYPE_STRING[self.type]
 
     def read(self):
@@ -270,7 +271,7 @@ class InputPRGFile:
 class Options:
     def __init__(self):
         self.invert_waveform = False
-        self.sine_wave = False
+        self.sine_wave = True
         self.force_relocatable = False
         self.force_non_relocatable = False
 
@@ -322,7 +323,7 @@ class CommandLine:
             self.error = True
 
     def parse_filename(self, name):
-        commodore_filename = self.next_argument()
+        commodore_filename = self.next_argument().upper()
         if commodore_filename is None:
             print 'Missing commodore filename for ', name
             self.error = True
@@ -355,10 +356,10 @@ if cl.error:
     print 'switches:'
     print ' -invert : invert the output waveform'
     print "           (this often fixes the problem if you can't load the file on a real commodore)"
-    print ' -sine   : force sine wave output'
-    print ' -square : force square wave output (the default)'
-    print ' -basic  : force all files to be relocatable (BASIC) program files'
-    print ' -data   : force all files to be non-relocatable (non-BASIC) files'
+    print ' -sine   : force sine wave output (the default)'
+    print ' -square : force square wave output'
+    print ' -basic  : force all files to be non-relocatable (BASIC) program files'
+    print ' -data   : force all files to be relocatable (non-BASIC) files'
     print '           (the default is to automatically detect the file type based on load address)'
     print ' -output=<filename> : specifies the name of the output WAV file. Default is out.wav'
 else:
