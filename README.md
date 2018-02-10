@@ -19,8 +19,8 @@ You can optionally specify more than one input file / filename pair, in which ca
 
 ## Switches:
 * `-invert`: invert the output waveform (this often fixes the problem if you can't load the file on a real commodore)
-* `-sine`: force sine wave output
-* `-square`: force square wave output (the default)
+* `-sine`: force sine wave output (the default)
+* `-square`: force square wave output
 * `-basic`: force all files to be relocatable (BASIC) program files
 * `-data`: force all files to be non-relocatable (non-BASIC) files (the default is to automatically detect the file type based on load address) 
 * `-output=<filename>`: specifies the name of the output WAV file. Default is `out.wav`
