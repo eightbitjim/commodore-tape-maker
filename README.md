@@ -5,12 +5,12 @@ Tested on python 2.7.10.
 
 Input files are `PRG`, output are mono uncompressed `WAV`. 
 
-If you are planning to record the file to cassette tape, I recommend using sine wave output (the default). If it doesn't work, try using `-invert`.
+If you are planning to record the file to cassette tape, I recommend using sine wave output (the default). If it doesn't successfully load into a real Commodore computer, try using `-invert` (or switching the wires around on your audio lead!).
 
 # Command line:
 The following assumes that you have python installed and can run it from the command line.
 
-`python maketape.py [switches] <input PRG> <commodore filename> [<input PRG><commodore filename>] ...`
+`python maketape.py [switches] <input PRG> <commodore filename> [<input PRG> <commodore filename>] ...`
 
 * `<input PRG>` is a `PRG` file to convert to audio. The first two bytes of the file must specify the load address in the
 Commodore-computer's memory. The remaining bytes of the file are assumed to be data. There is no checksum or any other structure to the file.
@@ -36,7 +36,7 @@ Same as above but invert the output signal, which often fixes problems loading i
 
 `python maketape.py -invert game.prg game`
 
-Convert two PRG files to a single WAV file called `files.wav`. Force output to be a sine wave:
+Convert two PRG files to a single WAV file called `files.wav`. Force output to be a square wave:
 
-`python maketape.py -sine loader.prg loader game.prg game`
+`python maketape.py -square loader.prg loader game.prg game`
 
