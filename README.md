@@ -1,7 +1,7 @@
 # commodore-tape-maker
 A python script to generate Commodore 64-compatible audio tape files from `PRG` files. The format is also compatible with the Commodore Vic 20 and PET.
 
-Tested on python 2.7.10.
+Tested on python 2.7.15+ and 3.6.8.
 
 Input files are `PRG`, output are mono uncompressed `WAV`. 
 

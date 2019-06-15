@@ -20,6 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+
+from builtins import (int, range, open)
+
 import math
 import struct
 import sys
@@ -41,7 +46,7 @@ class OutputSoundFile:
         self.wave_file.setframerate(self.sample_rate)
 
     def close(self):
-        self.wave_file.writeframes('')
+        self.wave_file.writeframes(b'')
         self.wave_file.close()
 
     def add_silence(self, length_in_seconds):
@@ -154,10 +159,10 @@ class CommodoreFile:
         self.add_data_marker(more_to_follow)
         self.checksum ^= value
 
-    def add_leader(self, type):
-        if type == self.LEADER_TYPE_HEADER:
+    def add_leader(self, file_type):
+        if file_type == self.LEADER_TYPE_HEADER:
             number_of_pulses = 0x6a00
-        elif type == self.LEADER_TYPE_CONTENT:
+        elif file_type == self.LEADER_TYPE_CONTENT:
             number_of_pulses = 0x1a00
         else:
             number_of_pulses = 0x4f
@@ -241,22 +246,19 @@ class InputPRGFile:
         self.type = 0
         self.data = []
         self.read()
-        print 'Filename: ', filename
-        print 'Length: ', len(self.data)
-        print 'Start address: ', self.start_address
-        print 'End address: ', self.start_address + len(self.data)
-        print 'Type: ', self.TYPE_STRING[self.type]
+        print('Filename: %s' % filename)
+        print('Length: %d' % len(self.data))
+        print('Start address: %d' % self.start_address)
+        print('End address: %d' % (self.start_address + len(self.data)))
+        print('Type: %s' % self.TYPE_STRING[self.type])
 
     def read(self):
-        f = open(self.filename, 'rb')
-        try:
-            self.start_address = ord(f.read(1)[0]) + 0x100 * ord(f.read(1)[0])
+        with open(self.filename, 'rb') as f:
+            self.start_address = ord(f.read(1)) + 0x100 * ord(f.read(1))
             byte = f.read(1)
-            while byte != '':
-                self.data.append(ord(byte[0]))
+            while byte:
+                self.data.append(ord(byte))
                 byte = f.read(1)
-        finally:
-            f.close()
 
         if self.options.force_non_relocatable:
             self.type = 3
@@ -301,31 +303,31 @@ class CommandLine:
     def parse_switch(self, switch):
         switch = switch.lower()
         if switch == '-invert':
-            print 'Inverting waveform'
+            print('Inverting waveform')
             self.options.invert_waveform = True
         elif switch == '-sine':
-            print 'Sine wave output'
+            print('Sine wave output')
             self.options.sine_wave = True
         elif switch == '-square':
-            print 'Square wave output'
+            print('Square wave output')
             self.options.sine_wave = False
         elif switch.startswith('-output='):
             self.out_file = switch[8::]
-            print 'Output file ', self.out_file
+            print('Output file ', self.out_file)
         elif switch == '-basic':
-            print 'Forcing relocatable (BASIC) file type'
+            print('Forcing relocatable (BASIC) file type')
             self.options.force_relocatable = True
         elif switch == '-data':
-            print 'Forcing non-relocatable (machine code / data) file type'
+            print('Forcing non-relocatable (machine code / data) file type')
             self.options.force_non_relocatable = True
         else:
-            print 'Unknown switch ', switch
+            print('Unknown switch %s' % switch)
             self.error = True
 
     def parse_filename(self, name):
         commodore_filename = self.next_argument().upper()
         if commodore_filename is None:
-            print 'Missing commodore filename for ', name
+            print('Missing commodore filename for %s' % name)
             self.error = True
         else:
             self.input_files.append((name, commodore_filename))
@@ -344,28 +346,28 @@ class CommandLine:
                 self.parse_filename(arg)
 
         if switches:
-            print "No input files specified"
+            print("No input files specified")
             self.error = True
         return self.error
 
 
 cl = CommandLine(sys.argv)
 if cl.error:
-    print 'Usage: python ', sys.argv[0], '[switches] <input prg filename> <c64 filename> [...]'
-    print '       where [...] is zero or more additional pairs of filenames'
-    print 'switches:'
-    print ' -invert : invert the output waveform'
-    print "           (this often fixes the problem if you can't load the file on a real commodore)"
-    print ' -sine   : force sine wave output (the default)'
-    print ' -square : force square wave output'
-    print ' -basic  : force all files to be relocatable (BASIC) program files'
-    print ' -data   : force all files to be non-relocatable (non-BASIC) files'
-    print '           (the default is to automatically detect the file type based on load address)'
-    print ' -output=<filename> : specifies the name of the output WAV file. Default is out.wav'
+    print('Usage: python ', sys.argv[0], '[switches] <input prg filename> <c64 filename> [...]')
+    print('       where [...] is zero or more additional pairs of filenames')
+    print('switches:')
+    print(' -invert : invert the output waveform')
+    print("           (this often fixes the problem if you can't load the file on a real commodore)")
+    print(' -sine   : force sine wave output (the default)')
+    print(' -square : force square wave output')
+    print(' -basic  : force all files to be relocatable (BASIC) program files')
+    print(' -data   : force all files to be non-relocatable (non-BASIC) files')
+    print('           (the default is to automatically detect the file type based on load address)')
+    print(' -output=<filename> : specifies the name of the output WAV file. Default is out.wav')
 else:
     wave_file = OutputSoundFile(cl.out_file, cl.options)
-    for i in range(len(cl.input_files)):
-        (in_filename, c64name) = cl.input_files[i]
+    for file_num in range(len(cl.input_files)):
+        (in_filename, c64name) = cl.input_files[file_num]
         prg_file = InputPRGFile(in_filename, cl.options)
         c64_file = CommodoreFile(c64name, cl.options)
         c64_file.set_content(prg_file)
