@@ -3,12 +3,12 @@ A python script to generate Commodore 64-compatible audio tape files from `PRG` 
 
 Tested on python 2.7.15+ and 3.6.8.
 
-Input files are `PRG`, output are mono uncompressed `WAV`. 
+Input files are `PRG`, output are mono uncompressed `WAV`. A `PRG` file is a file with the first 2 bytes specifying the load address in little-endian format.
 
 If you are planning to record the file to cassette tape, I recommend using sine wave output (the default). If it doesn't successfully load into a real Commodore computer, try using `-invert` (or switching the wires around on your audio lead!).
 
 # Command line:
-The following assumes that you have python 2 installed and can run it from the command line.
+The following assumes that you have python installed and can run it from the command line.
 
 `python maketape.py [switches] <input PRG> <commodore filename> [<input PRG> <commodore filename>] ...`
 
